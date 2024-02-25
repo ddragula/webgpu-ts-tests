@@ -16,6 +16,7 @@
     "@webgpu/types": "^0.1.40",
     "css-loader": "^6.10.0",
     "eslint": "^8.57.0",
+    "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jsdoc": "^48.2.0",
     "eslint-plugin-tsdoc": "^0.2.17",
     "eslint-webpack-plugin": "^4.0.1",
