@@ -1,0 +1,72 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true
+    },
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "project": "./tsconfig.json",
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+    },
+    "plugins": [
+        "@typescript-eslint",
+        "eslint-plugin-tsdoc",
+        "jsdoc"
+    ],
+    "rules": {
+        "comma-dangle": [
+            "warn",
+            "always-multiline"
+        ],
+        "eol-last": "error",
+        "indent": [
+            "error",
+            4
+        ],
+        "jsdoc/require-description": "warn",
+        "jsdoc/require-jsdoc": [
+            "warn", {
+                "publicOnly": true,
+                "require": {
+                    "ClassDeclaration": true,
+                    "MethodDefinition": true
+                }
+            }
+        ],
+        "linebreak-style": [
+            "error",
+            "windows"
+        ],
+        "max-len": [
+            "error", {
+                "code": 120
+            }
+        ],
+        "no-alert": "error",
+        "no-console": "warn",
+        "no-debugger": "warn",
+        "no-var": "error",
+        "no-empty-function": "warn",
+        "no-extra-parens": "warn",
+        "no-extra-semi": "warn",
+        "no-trailing-spaces": "error",
+        "quotes": [
+            "error",
+            "single"
+        ],
+        "quote-props": [
+            "warn",
+            "as-needed"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "tsdoc/syntax": "warn"
+    }
+}

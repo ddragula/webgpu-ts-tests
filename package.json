@@ -1,0 +1,34 @@
+{
+  "name": "webgpu-ts-tests",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "build": "webpack",
+    "dev": "webpack serve --open"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "@webgpu/types": "^0.1.40",
+    "css-loader": "^6.10.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-jsdoc": "^48.2.0",
+    "eslint-plugin-tsdoc": "^0.2.17",
+    "eslint-webpack-plugin": "^4.0.1",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.8.0",
+    "raw-loader": "^4.0.2",
+    "stylelint": "^16.2.1",
+    "stylelint-config-standard": "^36.0.0",
+    "stylelint-webpack-plugin": "^5.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.90.3",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.2"
+  }
+}
