@@ -16,7 +16,6 @@
     "plugins": [
         "@typescript-eslint",
         "eslint-plugin-tsdoc",
-        "import",
         "jsdoc"
     ],
     "rules": {
@@ -25,7 +24,6 @@
             "always-multiline"
         ],
         "eol-last": "error",
-        "import/no-unresolved": "error",
         "indent": [
             "error",
             4
@@ -40,6 +38,10 @@
                 }
             }
         ],
+        "linebreak-style": [
+            "error",
+            "windows"
+        ],
         "max-len": [
             "error", {
                 "code": 120
@@ -48,11 +50,11 @@
         "no-alert": "error",
         "no-console": "warn",
         "no-debugger": "warn",
+        "no-var": "error",
         "no-empty-function": "warn",
         "no-extra-parens": "warn",
         "no-extra-semi": "warn",
         "no-trailing-spaces": "error",
-        "no-var": "error",
         "quotes": [
             "error",
             "single"
