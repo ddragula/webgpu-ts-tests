@@ -8,7 +8,7 @@ export default class App {
     private canvas: HTMLCanvasElement;
 
     /**
-     * Creates instance of the App.
+     * Creates an instance of the App.
      * @param canvas - canvas HTML Element
      */
     constructor(canvas: HTMLCanvasElement) {
