@@ -1,5 +1,4 @@
 const path = require('path');
-const ESLintPlugin = require('eslint-webpack-plugin');
 const StylelintPlugin = require('stylelint-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
@@ -21,11 +20,6 @@ module.exports = {
         }],
     },
     plugins: [
-        new ESLintPlugin({
-            extensions: ['ts'],
-            failOnError: true,
-            failOnWarning: true
-        }),
         new StylelintPlugin(),
         new HtmlWebpackPlugin({
             template: './src/index.html',
@@ -36,14 +30,7 @@ module.exports = {
         extensions: ['.ts', '.js'],
     },
     output: {
-        filename: '[name].[contenthash].js',
-        path: path.resolve(__dirname, 'dist'),
+        path: path.resolve(__dirname, '../dist'),
         clean: true,
-    },
-    devServer: {
-        static: './dist',
-    },
-    optimization: {
-        runtimeChunk: 'single',
-    },
+    }
 };

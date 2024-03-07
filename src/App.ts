@@ -1,5 +1,3 @@
-// import redFragShader from './shaders/red.frag.wgsl';
-// import triangleVertShader from './shaders/triangle.vert.wgsl';
 import basicShader from './shaders/shader.wgsl';
 
 /**
@@ -13,6 +11,8 @@ export default class App {
      * @param canvas - canvas HTML Element
      */
     constructor(canvas: HTMLCanvasElement) {
+        canvas.width = canvas.clientWidth * window.devicePixelRatio;
+        canvas.height = canvas.clientHeight * window.devicePixelRatio;
         this.canvas = canvas;
     }
 
