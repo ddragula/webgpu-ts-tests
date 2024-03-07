@@ -1,4 +1,9 @@
+body {
+    margin: 0;
+    background-color: #333;
+}
+
 #main-canvas {
-    width: 800px;
+    width: 600px;
     height: 600px;
 }

@@ -17,6 +17,25 @@ export default class App {
     }
 
     /**
+     * A method that returns mocked data.
+     * @param xMin - minimum x-axis value
+     * @param xMax - maximum x-axis value
+     * @param yMin - minimum y-axis value
+     * @param yMax - maximum y-axis value
+     * @returns an array of [x, y] pairs
+     */
+    private mockData(xMin: number, xMax: number, yMin: number, yMax: number) : [number, number][] {
+        const data = Array.from({ length: 100 }, (_, i): [number, number] => [
+            i, Math.sin(i / 10) * 10 + Math.random(),
+        ]);
+
+        return data.map(([x, y]) => [
+            (x - xMin) / (xMax - xMin) * 2 - 1,
+            (y - yMin) / (yMax - yMin) * 2 - 1,
+        ]);
+    }
+
+    /**
      * An asynchronous method that runs the app.
      */
     async run() {
@@ -30,18 +49,11 @@ export default class App {
             format: canvasFormat,
         });
 
-        const vertices = new Float32Array([
-            -0.8, -0.8, // Triangle 1 (Blue)
-            0.8, -0.8,
-            0.8,  0.8,
-
-            -0.8, -0.8, // Triangle 2 (Red)
-            0.8,  0.8,
-            -0.8,  0.8,
-        ]);
+        const vertices = new Float32Array(
+            this.mockData(0, 99, -20, 20).flat(),
+        );
 
         const vertexBuffer = device.createBuffer({
-            label: 'Cell vertices',
             size: vertices.byteLength,
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
@@ -53,17 +65,15 @@ export default class App {
             attributes: [{
                 format: 'float32x2',
                 offset: 0,
-                shaderLocation: 0, // Position, see vertex shader
+                shaderLocation: 0,
             } as GPUVertexAttribute],
         };
 
         const cellShaderModule = device.createShaderModule({
-            label: 'Cell shader',
             code: basicShader,
         });
 
         const cellPipeline = device.createRenderPipeline({
-            label: 'Cell pipeline',
             layout: 'auto',
             vertex: {
                 module: cellShaderModule,
@@ -77,6 +87,9 @@ export default class App {
                     format: canvasFormat,
                 }],
             },
+            primitive: {
+                topology: 'line-strip' as GPUPrimitiveTopology,
+            },
         });
 
         const encoder = device.createCommandEncoder();
@@ -85,7 +98,7 @@ export default class App {
             colorAttachments: [{
                 view: context.getCurrentTexture().createView(),
                 loadOp: 'clear' as GPULoadOp,
-                clearValue: [ 0, 0.5, 0.8, 1],
+                clearValue: [ 0, 0, 0, 1],
                 storeOp: 'store' as GPUStoreOp,
             }],
         });
