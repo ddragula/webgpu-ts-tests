@@ -17,25 +17,6 @@ export default class App {
     }
 
     /**
-     * A method that returns mocked data.
-     * @param xMin - minimum x-axis value
-     * @param xMax - maximum x-axis value
-     * @param yMin - minimum y-axis value
-     * @param yMax - maximum y-axis value
-     * @returns an array of [x, y] pairs
-     */
-    private mockData(xMin: number, xMax: number, yMin: number, yMax: number) : [number, number][] {
-        const data = Array.from({ length: 100 }, (_, i): [number, number] => [
-            i, Math.sin(i / 10) * 10 + Math.random(),
-        ]);
-
-        return data.map(([x, y]) => [
-            (x - xMin) / (xMax - xMin) * 2 - 1,
-            (y - yMin) / (yMax - yMin) * 2 - 1,
-        ]);
-    }
-
-    /**
      * An asynchronous method that runs the app.
      */
     async run() {
@@ -49,46 +30,61 @@ export default class App {
             format: canvasFormat,
         });
 
-        const vertices = new Float32Array(
-            this.mockData(0, 99, -20, 20).flat(),
-        );
+        const vertices = new Float32Array([
+            -1, -1, -2.5, -1.5,
+            1, -1, 0.5, -1.5,
+            1, 1, 0.5, 1.5,
+            -1, 1, -2.5, 1.5,
+        ]);
+
+        const indices = new Uint16Array([
+            0, 1, 2,
+            0, 2, 3,
+        ]);
 
         const vertexBuffer = device.createBuffer({
             size: vertices.byteLength,
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
 
+        const indexBuffer = device.createBuffer({
+            size: indices.byteLength,
+            usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+        });
+
         device.queue.writeBuffer(vertexBuffer, 0, vertices);
+        device.queue.writeBuffer(indexBuffer, 0, indices);
 
         const vertexBufferLayout: GPUVertexBufferLayout = {
-            arrayStride: 8,
+            arrayStride: 16,
             attributes: [{
                 format: 'float32x2',
                 offset: 0,
                 shaderLocation: 0,
-            } as GPUVertexAttribute],
+            }, {
+                format: 'float32x2',
+                offset: Float32Array.BYTES_PER_ELEMENT * 2,
+                shaderLocation: 1,
+            }] as GPUVertexAttribute[],
         };
 
-        const cellShaderModule = device.createShaderModule({
+        const shaderModule = device.createShaderModule({
             code: basicShader,
         });
 
-        const cellPipeline = device.createRenderPipeline({
+        const pipeline = device.createRenderPipeline({
             layout: 'auto',
             vertex: {
-                module: cellShaderModule,
+                module: shaderModule,
                 entryPoint: 'vertexMain',
                 buffers: [vertexBufferLayout],
             },
             fragment: {
-                module: cellShaderModule,
+                module: shaderModule,
                 entryPoint: 'fragmentMain',
                 targets: [{
                     format: canvasFormat,
                 }],
-            },
-            primitive: {
-                topology: 'line-strip' as GPUPrimitiveTopology,
             },
         });
 
@@ -102,9 +98,10 @@ export default class App {
                 storeOp: 'store' as GPUStoreOp,
             }],
         });
-        pass.setPipeline(cellPipeline);
+        pass.setPipeline(pipeline);
         pass.setVertexBuffer(0, vertexBuffer);
-        pass.draw(vertices.length / 2);
+        pass.setIndexBuffer(indexBuffer, 'uint16');
+        pass.drawIndexed(indices.length);
         pass.end();
 
         device.queue.submit([encoder.finish()]);
