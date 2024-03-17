@@ -139,7 +139,7 @@ export default class App {
                 label: 'Cell State B',
                 size: cellStateArray.byteLength,
                 usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-            })
+            }),
         ];
 
         for (let i = 0; i < cellStateArray.length; i += 3) {
