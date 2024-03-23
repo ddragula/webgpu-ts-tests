@@ -23,15 +23,50 @@ struct FragmentInput {
     @location(0) coordinates: vec2f,
 }
 
-fn hsvToRgb(c: vec3f) -> vec3f {
-    // TODO: Fix this
-    let K = vec4f(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-    let p = mix(vec4f(c.bg, K.wz), vec4f(c.gb, K.xy), step(c.b, c.g));
-    let q = mix(vec4f(p.xyw, c.r), vec4f(c.r, p.yzx), step(p.x, c.r));
+fn hue2rgb(p: f32, q: f32, t: f32) -> f32 {
+    var nt: f32 = t;
 
-    let d = q.x - min(q.w, q.y);
-    let e = 1.0e-10;
-    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+    if (nt < 0) {
+        nt += 1.0;
+    }
+    if (nt > 1) {
+        nt -= 1.0;
+    }
+
+    if (nt < 1.0 / 6.0) {
+        return p + (q - p) * 6.0 * nt;
+    }
+    if (nt < 1.0 / 2.0) {
+        return q;
+    }
+    if (nt < 2.0 / 3.0) {
+        return p + (q - p) * (2.0 / 3.0 - nt) * 6.0;
+    }
+
+    return p;
+}
+
+fn hsl2rgb(h: f32, s: f32, l: f32) -> vec3f {
+    var rgb: vec3f;
+
+    if (s == 0) {
+        rgb = vec3f(l, l, l);
+    } else {
+        var q: f32;
+        if (l < 0.5) {
+            q = l * (1.0 + s);
+        } else {
+            q = l + s - l * s;
+        }
+
+        let p = 2.0 * l - q;
+
+        rgb.r = hue2rgb(p, q, h + 1.0 / 3.0);
+        rgb.g = hue2rgb(p, q, h);
+        rgb.b = hue2rgb(p, q, h - 1.0 / 3.0);
+    }
+
+    return rgb;
 }
 
 fn convCheck(p: vec2f) -> f32 {
@@ -60,9 +95,9 @@ fn fragmentMain(input: FragmentInput) -> @location(0) vec4f {
 
     let c: f32 = convCheck(coord);
     var val: f32 = 0;
-    if (c < 0.9999) {
-        val = 1.0;
+    if (c < 0.999) {
+        val = 0.5;
     }
 
-    return vec4f(hsvToRgb(vec3f(1.0 - c, 1.0, val)), c / 20.0);
+    return vec4f(hsl2rgb(1.0 - c, 1.0, val), 1);
 }
