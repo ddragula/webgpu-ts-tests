@@ -1,18 +1,25 @@
 struct VertexInput {
     @location(0) pos: vec2f,
-    @location(1) coordinates: vec2f,
+    @location(1) axisExtremesIDs: vec2f,
 }
 
 struct VertexOutput {
     @builtin(position) pos: vec4f,
-    @location(0) coordinates: vec2f,
+    @location(0) coord: vec2f,
 }
+
+@group(0) @binding(0) var<uniform> extremesUniform: vec4f;
 
 @vertex
 fn vertexMain(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
     output.pos = vec4f(input.pos, 0, 1);
-    output.coordinates = input.coordinates;
+
+    let extrIDs = vec2u(input.axisExtremesIDs);
+    output.coord = vec2f(
+        extremesUniform[extrIDs.x],
+        extremesUniform[extrIDs.y]
+    );
 
     return output;
 }
@@ -20,7 +27,7 @@ fn vertexMain(input: VertexInput) -> VertexOutput {
 // ---------------------------------------------------------------------------
 
 struct FragmentInput {
-    @location(0) coordinates: vec2f,
+    @location(0) coord: vec2f,
 }
 
 fn hue2rgb(p: f32, q: f32, t: f32) -> f32 {
@@ -91,9 +98,7 @@ fn convCheck(p: vec2f) -> f32 {
 
 @fragment
 fn fragmentMain(input: FragmentInput) -> @location(0) vec4f {
-    let coord = input.coordinates;
-
-    let c: f32 = convCheck(coord);
+    let c: f32 = convCheck(input.coord);
     var val: f32 = 0;
     if (c < 0.999) {
         val = 0.5;

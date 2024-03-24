@@ -6,6 +6,8 @@ import basicShader from './shaders/shader.wgsl';
 export default class App {
     private canvas: HTMLCanvasElement;
 
+    public render?: (() => void);
+
     /**
      * Creates an instance of the App.
      * @param canvas - canvas HTML Element
@@ -31,15 +33,21 @@ export default class App {
         });
 
         const vertices = new Float32Array([
-            -1, -1, -2.5, -1.5,
-            1, -1, 0.5, -1.5,
-            1, 1, 0.5, 1.5,
-            -1, 1, -2.5, 1.5,
+            //x, y, axes-id x2
+            -1, -1, 0, 2,
+            1, -1, 1, 2,
+            1, 1, 1, 3,
+            -1, 1, 0, 3,
         ]);
 
         const indices = new Uint16Array([
             0, 1, 2,
             0, 2, 3,
+        ]);
+
+        const extremesUniform = new Float32Array([
+            -2.5, 0.5, // x-axis
+            -1.5, 1.5, // y-axis
         ]);
 
         const vertexBuffer = device.createBuffer({
@@ -52,8 +60,14 @@ export default class App {
             usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
         });
 
+        const extremesUniformBuffer = device.createBuffer({
+            size: extremesUniform.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
         device.queue.writeBuffer(vertexBuffer, 0, vertices);
         device.queue.writeBuffer(indexBuffer, 0, indices);
+        device.queue.writeBuffer(extremesUniformBuffer, 0, extremesUniform);
 
         const vertexBufferLayout: GPUVertexBufferLayout = {
             arrayStride: 16,
@@ -88,22 +102,40 @@ export default class App {
             },
         });
 
-        const encoder = device.createCommandEncoder();
-
-        const pass = encoder.beginRenderPass({
-            colorAttachments: [{
-                view: context.getCurrentTexture().createView(),
-                loadOp: 'clear' as GPULoadOp,
-                clearValue: [ 0, 0, 0, 1],
-                storeOp: 'store' as GPUStoreOp,
+        const bindGroup = device.createBindGroup({
+            layout: pipeline.getBindGroupLayout(0),
+            entries: [{
+                binding: 0,
+                resource: {
+                    buffer: extremesUniformBuffer,
+                },
             }],
         });
-        pass.setPipeline(pipeline);
-        pass.setVertexBuffer(0, vertexBuffer);
-        pass.setIndexBuffer(indexBuffer, 'uint16');
-        pass.drawIndexed(indices.length);
-        pass.end();
 
-        device.queue.submit([encoder.finish()]);
+        this.render = function render() {
+            // extremesUniform.set([Math.random(), Math.random(), Math.random(), 1], 0);
+            // device.queue.writeBuffer(extremesUniformBuffer, 0, extremesUniform);
+
+            const encoder = device.createCommandEncoder();
+
+            const pass = encoder.beginRenderPass({
+                colorAttachments: [{
+                    view: context.getCurrentTexture().createView(),
+                    loadOp: 'clear' as GPULoadOp,
+                    clearValue: [ 0, 0, 0, 1],
+                    storeOp: 'store' as GPUStoreOp,
+                }],
+            });
+            pass.setPipeline(pipeline);
+            pass.setVertexBuffer(0, vertexBuffer);
+            pass.setIndexBuffer(indexBuffer, 'uint16');
+            pass.setBindGroup(0, bindGroup);
+            pass.drawIndexed(indices.length);
+            pass.end();
+
+            device.queue.submit([encoder.finish()]);
+        };
+
+        this.render();
     }
 }
