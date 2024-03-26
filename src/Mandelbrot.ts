@@ -1,30 +1,33 @@
+import type { Chart } from 'highcharts';
+
 import basicShader from './shaders/shader.wgsl';
 
 /**
- * Main application class.
+ * Mandelbrot set rendering class.
  */
-export default class App {
+export default class Mandelbrot {
     private canvas: HTMLCanvasElement;
+    private render?: (() => void);
 
-    public render?: (() => void);
+    private device: GPUDevice;
+    private extremesUniform: Float32Array;
+    private extremesUniformBuffer: GPUBuffer;
 
     /**
      * Creates an instance of the App.
      * @param canvas - canvas HTML Element
      */
     constructor(canvas: HTMLCanvasElement) {
-        canvas.width = canvas.clientWidth * window.devicePixelRatio;
-        canvas.height = canvas.clientHeight * window.devicePixelRatio;
         this.canvas = canvas;
     }
 
     /**
-     * An asynchronous method that runs the app.
+     * An asynchronous method that runs the renderer.
      */
     async run() {
         const { canvas } = this;
         const adapter = await navigator.gpu.requestAdapter();
-        const device = await adapter.requestDevice();
+        const device = this.device = await adapter.requestDevice();
         const context = canvas.getContext('webgpu');
         const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
         context.configure({
@@ -45,7 +48,7 @@ export default class App {
             0, 2, 3,
         ]);
 
-        const extremesUniform = new Float32Array([
+        const extremesUniform = this.extremesUniform = new Float32Array([
             -2.5, 0.5, // x-axis
             -1.5, 1.5, // y-axis
         ]);
@@ -60,7 +63,7 @@ export default class App {
             usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
         });
 
-        const extremesUniformBuffer = device.createBuffer({
+        const extremesUniformBuffer = this.extremesUniformBuffer = device.createBuffer({
             size: extremesUniform.byteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
@@ -113,9 +116,6 @@ export default class App {
         });
 
         this.render = function render() {
-            // extremesUniform.set([Math.random(), Math.random(), Math.random(), 1], 0);
-            // device.queue.writeBuffer(extremesUniformBuffer, 0, extremesUniform);
-
             const encoder = device.createCommandEncoder();
 
             const pass = encoder.beginRenderPass({
@@ -135,7 +135,35 @@ export default class App {
 
             device.queue.submit([encoder.finish()]);
         };
+    }
 
+    private setCanvasSize(chart: Chart) {
+        const { canvas } = this;
+        canvas.style.left = chart.plotLeft + 'px';
+        canvas.style.top = chart.plotTop + 'px';
+        canvas.style.width = chart.plotWidth + 'px';
+        canvas.style.height = chart.plotHeight + 'px';
+        canvas.width = canvas.clientWidth * window.devicePixelRatio;
+        canvas.height = canvas.clientHeight * window.devicePixelRatio;
+    }
+
+    /**
+     * Set the extremes of the Mandelbrot set axes.
+     * @param xAxisMin - Minimum value of the x-axis
+     * @param xAxisMax - Maximum value of the x-axis
+     * @param yAxisMin - Minimum value of the y-axis
+     * @param yAxisMax - Maximum value of the y-axis
+     */
+    public setExtremes(chart: Chart) {
+        if (!this.render) return;
+
+        const xAxis = chart.xAxis[0];
+        const yAxis = chart.yAxis[0];
+
+        this.setCanvasSize(chart);
+
+        this.extremesUniform.set([xAxis.min, xAxis.max, yAxis.min, yAxis.max]);
+        this.device.queue.writeBuffer(this.extremesUniformBuffer, 0, this.extremesUniform);
         this.render();
     }
 }
