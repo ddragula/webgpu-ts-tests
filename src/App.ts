@@ -17,25 +17,6 @@ export default class App {
     }
 
     /**
-     * A method that returns mocked data.
-     * @param xMin - minimum x-axis value
-     * @param xMax - maximum x-axis value
-     * @param yMin - minimum y-axis value
-     * @param yMax - maximum y-axis value
-     * @returns an array of [x, y] pairs
-     */
-    private mockData(xMin: number, xMax: number, yMin: number, yMax: number) : [number, number][] {
-        const data = Array.from({ length: 100 }, (_, i): [number, number] => [
-            i, Math.sin(i / 10) * 10 + Math.random(),
-        ]);
-
-        return data.map(([x, y]) => [
-            (x - xMin) / (xMax - xMin) * 2 - 1,
-            (y - yMin) / (yMax - yMin) * 2 - 1,
-        ]);
-    }
-
-    /**
      * An asynchronous method that runs the app.
      */
     async run() {
@@ -49,15 +30,16 @@ export default class App {
             format: canvasFormat,
         });
 
-        const vertices = new Float32Array(
-            this.mockData(0, 99, -20, 20).flat(),
-        );
+        const vertices = new Float32Array([
+            0, 0.5,
+            -0.5, -0.5,
+            0.5, -0.5,
+        ]);
 
         const vertexBuffer = device.createBuffer({
             size: vertices.byteLength,
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
-
         device.queue.writeBuffer(vertexBuffer, 0, vertices);
 
         const vertexBufferLayout: GPUVertexBufferLayout = {
@@ -69,26 +51,23 @@ export default class App {
             } as GPUVertexAttribute],
         };
 
-        const cellShaderModule = device.createShaderModule({
+        const shaderModule = device.createShaderModule({
             code: basicShader,
         });
 
-        const cellPipeline = device.createRenderPipeline({
+        const pipeline = device.createRenderPipeline({
             layout: 'auto',
             vertex: {
-                module: cellShaderModule,
+                module: shaderModule,
                 entryPoint: 'vertexMain',
                 buffers: [vertexBufferLayout],
             },
             fragment: {
-                module: cellShaderModule,
+                module: shaderModule,
                 entryPoint: 'fragmentMain',
                 targets: [{
                     format: canvasFormat,
                 }],
-            },
-            primitive: {
-                topology: 'line-strip' as GPUPrimitiveTopology,
             },
         });
 
@@ -102,7 +81,7 @@ export default class App {
                 storeOp: 'store' as GPUStoreOp,
             }],
         });
-        pass.setPipeline(cellPipeline);
+        pass.setPipeline(pipeline);
         pass.setVertexBuffer(0, vertexBuffer);
         pass.draw(vertices.length / 2);
         pass.end();
