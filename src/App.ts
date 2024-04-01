@@ -31,9 +31,9 @@ export default class App {
         });
 
         const vertices = new Float32Array([
-            0, 0.5,
-            -0.5, -0.5,
-            0.5, -0.5,
+            0, 0.5, 1, 0, 0,
+            -0.5, -0.5, 0, 1, 0,
+            0.5, -0.5, 0, 0, 1,
         ]);
 
         const vertexBuffer = device.createBuffer({
@@ -43,12 +43,16 @@ export default class App {
         device.queue.writeBuffer(vertexBuffer, 0, vertices);
 
         const vertexBufferLayout: GPUVertexBufferLayout = {
-            arrayStride: 8,
+            arrayStride: 20,
             attributes: [{
                 format: 'float32x2',
                 offset: 0,
                 shaderLocation: 0,
-            } as GPUVertexAttribute],
+            }, {
+                format: 'float32x3',
+                offset: 8,
+                shaderLocation: 1,
+            }] as GPUVertexAttribute[],
         };
 
         const shaderModule = device.createShaderModule({
@@ -83,7 +87,7 @@ export default class App {
         });
         pass.setPipeline(pipeline);
         pass.setVertexBuffer(0, vertexBuffer);
-        pass.draw(vertices.length / 2);
+        pass.draw(vertices.length / 5);
         pass.end();
 
         device.queue.submit([encoder.finish()]);
