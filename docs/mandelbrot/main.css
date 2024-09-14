@@ -1,0 +1,12 @@
+body {
+    margin: 0;
+}
+
+#container {
+    position: relative;
+}
+
+#main-canvas {
+    position: absolute;
+}
+
