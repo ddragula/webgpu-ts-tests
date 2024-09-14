@@ -1,34 +1,54 @@
-import type { Chart } from 'highcharts';
+import type { HeatmapSeries } from './hc-modules/ContourModule';
 
 import basicShader from './shaders/shader.wgsl';
 
 /**
- * Mandelbrot set rendering class.
+ * Contourmap rendering class.
  */
-export default class Mandelbrot {
-    private canvas: HTMLCanvasElement;
-    private render?: (() => void);
-
-    private device: GPUDevice;
+export default class Contourmap {
+    private series: HeatmapSeries;
     private extremesUniform: Float32Array;
     private extremesUniformBuffer: GPUBuffer;
 
+    private context: GPUCanvasContext;
+    private device?: GPUDevice;
+    private adapter?: GPUAdapter;
+
+    public render?: (() => void);
+
     /**
      * Creates an instance of the App.
-     * @param canvas - canvas HTML Element
+     * @param series - The heatmap series to render the contourmap to.
      */
-    constructor(canvas: HTMLCanvasElement) {
-        this.canvas = canvas;
+    constructor(series: HeatmapSeries) {
+        this.series = series;
+
+        // Remove the old canvas if it exists
+        series.canvas?.remove();
+
+        // Create a new canvas
+        const canvas = document.createElement('canvas');
+        series.canvas = canvas;
+
+        canvas.classList.add('contourmap-canvas');
+        series.chart.container.prepend(canvas);
+
+        this.context = canvas.getContext('webgpu');
     }
 
     /**
      * An asynchronous method that runs the renderer.
      */
     async run() {
-        const { canvas } = this;
-        const adapter = await navigator.gpu.requestAdapter();
-        const device = this.device = await adapter.requestDevice();
-        const context = canvas.getContext('webgpu');
+        const { context } = this;
+        if (!this.adapter) {
+            this.adapter = await navigator.gpu.requestAdapter();
+        }
+        if (!this.device) {
+            this.device = await this.adapter.requestDevice();
+        }
+        const { device } = this;
+
         const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
         context.configure({
             device: device,
@@ -137,33 +157,39 @@ export default class Mandelbrot {
         };
     }
 
-    private setCanvasSize(chart: Chart) {
-        const { canvas } = this;
-        canvas.style.left = chart.plotLeft + 'px';
-        canvas.style.top = chart.plotTop + 'px';
-        canvas.style.width = chart.plotWidth + 'px';
-        canvas.style.height = chart.plotHeight + 'px';
+    private setCanvasSize() {
+        const { canvas } = this.series;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { xAxis } = this.series as any;
+
+        canvas.style.left = xAxis.left + 'px';
+        canvas.style.top = xAxis.top + 'px';
+        canvas.style.width = xAxis.len + 'px';
+        canvas.style.height = xAxis.height + 'px';
+
         canvas.width = canvas.clientWidth * window.devicePixelRatio;
         canvas.height = canvas.clientHeight * window.devicePixelRatio;
     }
 
     /**
-     * Set the extremes of the Mandelbrot set axes.
-     * @param xAxisMin - Minimum value of the x-axis
-     * @param xAxisMax - Maximum value of the x-axis
-     * @param yAxisMin - Minimum value of the y-axis
-     * @param yAxisMax - Maximum value of the y-axis
+     * Set the extremes of the Contourmap axes.
      */
-    public setExtremes(chart: Chart) {
+    public setExtremes() {
         if (!this.render) return;
 
-        const xAxis = chart.xAxis[0];
-        const yAxis = chart.yAxis[0];
-
-        this.setCanvasSize(chart);
+        const { xAxis, yAxis } = this.series;
+        this.setCanvasSize();
 
         this.extremesUniform.set([xAxis.min, xAxis.max, yAxis.min, yAxis.max]);
         this.device.queue.writeBuffer(this.extremesUniformBuffer, 0, this.extremesUniform);
         this.render();
+    }
+
+    /**
+     * Destroy the Contourmap instance.
+     */
+    public destroy() {
+        this.series.canvas.remove();
     }
 }
