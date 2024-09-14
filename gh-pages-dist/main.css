@@ -1,0 +1,23 @@
+body {
+    margin: 0;
+}
+
+#container {
+    position: relative;
+}
+
+.contourmap-canvas {
+    position: absolute;
+    z-index: -1;
+}
+
+.highcharts-grid-line {
+    stroke: #0001
+}
+
+.chart {
+    display: inline-block;
+    width: 700px;
+    height: 500px;;
+}
+
