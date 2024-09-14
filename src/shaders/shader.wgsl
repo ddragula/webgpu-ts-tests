@@ -42,20 +42,34 @@ struct FragmentInput {
     @location(1) valExtremes: vec2f
 }
 
+@group(0) @binding(2) var<storage> colorStops: array<vec4<f32>>;
+@group(0) @binding(3) var<uniform> colorStopsCount: u32;
+
+fn getColor(value: f32) -> vec3<f32> {
+    let stopCount = colorStopsCount;
+
+    if (stopCount == 0u) {
+        return vec3<f32>(1.0, 1.0, 1.0);
+    }
+
+    for (var i: u32 = 0u; i < stopCount - 1u; i = i + 1u) {
+        if (value < colorStops[i + 1u].x) {
+            let t = (value - colorStops[i].x) / (colorStops[i + 1u].x - colorStops[i].x);
+            return mix(colorStops[i].yzw, colorStops[i + 1u].yzw, t);
+        }
+    }
+    return colorStops[stopCount - 1u].yzw;
+}
+
 @fragment
 fn fragmentMain(input: FragmentInput) -> @location(0) vec4f {
     let val = input.value;
 
-    let contourInterval: f32 = 10.0;
-    let lineWidth: f32 = 0.5;
-
-    let contour: f32 = fract(val / contourInterval);
-    let isLine: f32 = step(contour, lineWidth / contourInterval);
-
     let minHeight: f32 = input.valExtremes.x;
     let maxHeight: f32 = input.valExtremes.y;
-    let normalizedHeight: f32 = (val - minHeight) / (maxHeight - minHeight);
-    let color: vec3<f32> = vec3(normalizedHeight, normalizedHeight, 1.0 - normalizedHeight);
+    let normVal: f32 = (val - minHeight) / (maxHeight - minHeight);
 
-    return vec4f(color, 1);
+    let color = getColor(normVal);
+
+    return vec4(color, 1.0);
 }

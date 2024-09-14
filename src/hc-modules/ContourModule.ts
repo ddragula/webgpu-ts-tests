@@ -10,6 +10,10 @@ export interface HeatmapPoint extends Highcharts.Point {
     y: number;
 }
 
+export interface ColorAxis extends Highcharts.Axis {
+    stops: Highcharts.GradientColorStopObject[];
+}
+
 export interface HeatmapSeries extends Highcharts.Series {
     canvas?: HTMLCanvasElement;
     context?: CanvasRenderingContext2D;
@@ -21,6 +25,7 @@ export interface HeatmapSeries extends Highcharts.Series {
     isDirtyCanvas: boolean;
     drawPoints(): void;
     contourmap?: Contourmap;
+    colorAxis?: ColorAxis;
 }
 
 export type RenderContourFunction = (series: HeatmapSeries) => void;

@@ -14,3 +14,9 @@ body {
 .highcharts-grid-line {
     stroke: #0001
 }
+
+.chart {
+    display: inline-block;
+    width: 700px;
+    height: 500px;;
+}

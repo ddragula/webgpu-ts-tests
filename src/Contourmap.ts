@@ -2,12 +2,14 @@ import type { HeatmapSeries } from './hc-modules/ContourModule';
 import Delaunator from 'delaunator';
 
 import basicShader from './shaders/shader.wgsl';
+import colorToArray from './utils/colorToArray';
 
 /**
  * Contourmap rendering class.
  */
 export default class Contourmap {
     private series: HeatmapSeries;
+
     private extremesUniform: Float32Array;
     private extremesUniformBuffer: GPUBuffer;
     private valueExtremesUniform: Float32Array;
@@ -88,6 +90,7 @@ export default class Contourmap {
 
         const extremesUniform = this.extremesUniform = new Float32Array(this.getExtremes());
         const valueExtremesUniform = this.valueExtremesUniform = new Float32Array(this.getDataExtremes());
+        const colorAxisStops = this.getColorAxisStopsData();
 
         const vertexBuffer = device.createBuffer({
             size: vertices.byteLength,
@@ -109,10 +112,28 @@ export default class Contourmap {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
+        const colorAxisStopsBuffer = device.createBuffer({
+            size: colorAxisStops.array.byteLength,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true,
+        });
+
+        const colorAxisStopsCountBuffer = device.createBuffer({
+            size: 4,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            mappedAtCreation: true,
+        });
+
         device.queue.writeBuffer(vertexBuffer, 0, vertices);
         device.queue.writeBuffer(indexBuffer, 0, indices);
         device.queue.writeBuffer(extremesUniformBuffer, 0, extremesUniform);
         device.queue.writeBuffer(valueExtremesUniformBuffer, 0, valueExtremesUniform);
+
+        new Float32Array(colorAxisStopsBuffer.getMappedRange()).set(colorAxisStops.array);
+        colorAxisStopsBuffer.unmap();
+
+        new Uint32Array(colorAxisStopsCountBuffer.getMappedRange())[0] = colorAxisStops.length;
+        colorAxisStopsCountBuffer.unmap();
 
         const vertexBufferLayout: GPUVertexBufferLayout = {
             arrayStride: 12,
@@ -157,6 +178,16 @@ export default class Contourmap {
                 binding: 1,
                 resource: {
                     buffer: valueExtremesUniformBuffer,
+                },
+            }, {
+                binding: 2,
+                resource: {
+                    buffer: colorAxisStopsBuffer,
+                },
+            }, {
+                binding: 3,
+                resource: {
+                    buffer: colorAxisStopsCountBuffer,
                 },
             }],
         });
@@ -206,13 +237,52 @@ export default class Contourmap {
         ];
     }
 
+    private getColorAxisStopsData() : { array: Float32Array, length: number } {
+        const colorAxis = this.series.colorAxis;
+
+        if (!colorAxis) {
+            return {
+                array: new Float32Array([
+                    0, 0, 0, 0,
+                    1, 1, 1, 1,
+                ]),
+                length: 2,
+            };
+        }
+
+        const flattenedData = new Float32Array(colorAxis.stops.map(stop => [
+            stop[0],
+            ...colorToArray(stop[1]),
+        ]).flat());
+
+        return {
+            array: flattenedData,
+            length: colorAxis.stops.length,
+        };
+    }
+
     private getDataExtremes() {
         const { series } = this;
 
-        return [
-            series.dataMin, // valueMin
-            series.dataMax, // valueMax
-        ];
+        let min = series.valueMin;
+        if (isNaN(min)) {
+            min = series.colorAxis?.min;
+
+            if (isNaN(min)) {
+                min = Math.min(...series.points.map(point => point.value));
+            }
+        }
+
+        let max = series.valueMax;
+        if (isNaN(max)) {
+            max = series.colorAxis?.max;
+
+            if (isNaN(max)) {
+                max = Math.max(...series.points.map(point => point.value));
+            }
+        }
+
+        return [min, max];
     }
 
     /**
@@ -224,6 +294,8 @@ export default class Contourmap {
         this.setCanvasSize();
         this.extremesUniform.set(this.getExtremes());
         this.device.queue.writeBuffer(this.extremesUniformBuffer, 0, this.extremesUniform);
+        this.valueExtremesUniform.set(this.getDataExtremes());
+        this.device.queue.writeBuffer(this.valueExtremesUniformBuffer, 0, this.valueExtremesUniform);
         this.render();
     }
 
