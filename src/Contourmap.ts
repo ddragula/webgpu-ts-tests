@@ -1,4 +1,5 @@
 import type { HeatmapSeries } from './hc-modules/ContourModule';
+import Delaunator from 'delaunator';
 
 import basicShader from './shaders/shader.wgsl';
 
@@ -9,12 +10,14 @@ export default class Contourmap {
     private series: HeatmapSeries;
     private extremesUniform: Float32Array;
     private extremesUniformBuffer: GPUBuffer;
+    private valueExtremesUniform: Float32Array;
+    private valueExtremesUniformBuffer: GPUBuffer;
 
     private context: GPUCanvasContext;
     private device?: GPUDevice;
     private adapter?: GPUAdapter;
 
-    public render?: (() => void);
+    private render?: (() => void);
 
     /**
      * Creates an instance of the App.
@@ -31,9 +34,34 @@ export default class Contourmap {
         series.canvas = canvas;
 
         canvas.classList.add('contourmap-canvas');
-        series.chart.container.prepend(canvas);
+        series.chart.container.appendChild(canvas);
 
         this.context = canvas.getContext('webgpu');
+    }
+
+    private triangulateData(): Delaunator<Float32Array> {
+        const points2d: Float32Array = new Float32Array(this.series.points.length * 2);
+
+        this.series.points.forEach((point, i) => {
+            points2d[i * 2] = point.x;
+            points2d[i * 2 + 1] = point.y;
+        });
+
+        const result = new Delaunator(points2d);
+
+        return result;
+    }
+
+    private get3DData() {
+        const points3d: Float32Array = new Float32Array(this.series.points.length * 3);
+
+        this.series.points.forEach((point, i) => {
+            points3d[i * 3] = point.x;
+            points3d[i * 3 + 1] = point.y;
+            points3d[i * 3 + 2] = point.value;
+        });
+
+        return points3d;
     }
 
     /**
@@ -55,23 +83,11 @@ export default class Contourmap {
             format: canvasFormat,
         });
 
-        const vertices = new Float32Array([
-            //x, y, axes-id x2
-            -1, -1, 0, 2,
-            1, -1, 1, 2,
-            1, 1, 1, 3,
-            -1, 1, 0, 3,
-        ]);
+        const vertices = this.get3DData();
+        const indices = this.triangulateData().triangles;
 
-        const indices = new Uint16Array([
-            0, 1, 2,
-            0, 2, 3,
-        ]);
-
-        const extremesUniform = this.extremesUniform = new Float32Array([
-            -2.5, 0.5, // x-axis
-            -1.5, 1.5, // y-axis
-        ]);
+        const extremesUniform = this.extremesUniform = new Float32Array(this.getExtremes());
+        const valueExtremesUniform = this.valueExtremesUniform = new Float32Array(this.getDataExtremes());
 
         const vertexBuffer = device.createBuffer({
             size: vertices.byteLength,
@@ -88,20 +104,22 @@ export default class Contourmap {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
+        const valueExtremesUniformBuffer = this.valueExtremesUniformBuffer = device.createBuffer({
+            size: valueExtremesUniform.byteLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
         device.queue.writeBuffer(vertexBuffer, 0, vertices);
         device.queue.writeBuffer(indexBuffer, 0, indices);
         device.queue.writeBuffer(extremesUniformBuffer, 0, extremesUniform);
+        device.queue.writeBuffer(valueExtremesUniformBuffer, 0, valueExtremesUniform);
 
         const vertexBufferLayout: GPUVertexBufferLayout = {
-            arrayStride: 16,
+            arrayStride: 12,
             attributes: [{
-                format: 'float32x2',
+                format: 'float32x3',
                 offset: 0,
                 shaderLocation: 0,
-            }, {
-                format: 'float32x2',
-                offset: Float32Array.BYTES_PER_ELEMENT * 2,
-                shaderLocation: 1,
             }] as GPUVertexAttribute[],
         };
 
@@ -123,6 +141,9 @@ export default class Contourmap {
                     format: canvasFormat,
                 }],
             },
+            primitive: {
+                topology: 'triangle-list',
+            },
         });
 
         const bindGroup = device.createBindGroup({
@@ -131,6 +152,11 @@ export default class Contourmap {
                 binding: 0,
                 resource: {
                     buffer: extremesUniformBuffer,
+                },
+            }, {
+                binding: 1,
+                resource: {
+                    buffer: valueExtremesUniformBuffer,
                 },
             }],
         });
@@ -142,13 +168,13 @@ export default class Contourmap {
                 colorAttachments: [{
                     view: context.getCurrentTexture().createView(),
                     loadOp: 'clear' as GPULoadOp,
-                    clearValue: [ 0, 0, 0, 1],
+                    clearValue: [ 0, 0, 0, 1 ],
                     storeOp: 'store' as GPUStoreOp,
                 }],
             });
             pass.setPipeline(pipeline);
             pass.setVertexBuffer(0, vertexBuffer);
-            pass.setIndexBuffer(indexBuffer, 'uint16');
+            pass.setIndexBuffer(indexBuffer, 'uint32');
             pass.setBindGroup(0, bindGroup);
             pass.drawIndexed(indices.length);
             pass.end();
@@ -158,18 +184,35 @@ export default class Contourmap {
     }
 
     private setCanvasSize() {
-        const { canvas } = this.series;
+        const { canvas, xAxis, yAxis } = this.series;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { xAxis } = this.series as any;
-
-        canvas.style.left = xAxis.left + 'px';
-        canvas.style.top = xAxis.top + 'px';
+        canvas.style.left = xAxis.toPixels(xAxis.toValue(0, true), false) + 'px';
+        canvas.style.top = yAxis.toPixels(yAxis.toValue(0, true), false) + 'px';
         canvas.style.width = xAxis.len + 'px';
-        canvas.style.height = xAxis.height + 'px';
+        canvas.style.height = yAxis.len + 'px';
 
         canvas.width = canvas.clientWidth * window.devicePixelRatio;
         canvas.height = canvas.clientHeight * window.devicePixelRatio;
+    }
+
+    private getExtremes() {
+        const { xAxis, yAxis } = this.series;
+
+        return [
+            xAxis.toValue(0, true), // xMin
+            xAxis.toValue(xAxis.len, true), // xMax
+            yAxis.toValue(yAxis.len, true), // yMin
+            yAxis.toValue(0, true), // yMax
+        ];
+    }
+
+    private getDataExtremes() {
+        const { series } = this;
+
+        return [
+            series.dataMin, // valueMin
+            series.dataMax, // valueMax
+        ];
     }
 
     /**
@@ -178,10 +221,8 @@ export default class Contourmap {
     public setExtremes() {
         if (!this.render) return;
 
-        const { xAxis, yAxis } = this.series;
         this.setCanvasSize();
-
-        this.extremesUniform.set([xAxis.min, xAxis.max, yAxis.min, yAxis.max]);
+        this.extremesUniform.set(this.getExtremes());
         this.device.queue.writeBuffer(this.extremesUniformBuffer, 0, this.extremesUniform);
         this.render();
     }
