@@ -38,6 +38,7 @@ fn vertexMain(input: VertexInput) -> VertexOutput {
 // ---------------------------------------------------------------------------
 
 struct FragmentInput {
+    @builtin(position) pos: vec4f,
     @location(0) value: f32,
     @location(1) valExtremes: vec2f
 }

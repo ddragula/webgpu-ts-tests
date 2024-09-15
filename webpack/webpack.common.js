@@ -15,7 +15,7 @@ module.exports = {
             test: /\.css$/i,
             use: [MiniCssExtractPlugin.loader, 'css-loader'],
         }, {
-            test: /\.wgsl$/i,
+            test: /\.(wgsl|csv)$/i,
             use: 'raw-loader'
         }],
     },

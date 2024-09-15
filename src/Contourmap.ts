@@ -44,9 +44,18 @@ export default class Contourmap {
     private triangulateData(): Delaunator<Float32Array> {
         const points2d: Float32Array = new Float32Array(this.series.points.length * 2);
 
+        const extremes = this.getExtremes();
+        let xDivider = 1, yDivider = 1;
+        if (Math.abs(extremes[0]) > 10e6) {
+            xDivider = 10e6;
+        }
+        if (Math.abs(extremes[2]) > 10e6) {
+            yDivider = 10e6;
+        }
+
         this.series.points.forEach((point, i) => {
-            points2d[i * 2] = point.x;
-            points2d[i * 2 + 1] = point.y;
+            points2d[i * 2] = point.x / xDivider;
+            points2d[i * 2 + 1] = point.y / yDivider;
         });
 
         const result = new Delaunator(points2d);

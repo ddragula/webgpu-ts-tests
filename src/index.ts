@@ -1,11 +1,13 @@
 import './style.css';
 import * as Highcharts from 'highcharts';
+import DataModule from 'highcharts/modules/data';
 import HeatmapModule from 'highcharts/modules/heatmap';
 import ContourModule from './hc-modules/ContourModule';
 
-import temperatureData from './data/temperature.json';
 import perlinData from './data/perlin.json';
+import temperatureCsv from './data/temperature.csv';
 
+DataModule(Highcharts);
 HeatmapModule(Highcharts);
 ContourModule(Highcharts);
 
@@ -42,6 +44,9 @@ Highcharts.chart('temperature-chart', {
     title: {
         text: 'Temperature Chart',
     },
+    data: {
+        csv: temperatureCsv,
+    },
     xAxis: {
         type: 'datetime',
         tickPixelInterval: 150,
@@ -60,7 +65,10 @@ Highcharts.chart('temperature-chart', {
     },
     series: [{
         type: 'heatmap',
-        data: temperatureData,
+        colsize: 24 * 36e5,
+        contour: {
+            enabled: true,
+        },
     }],
 });
 
