@@ -6,6 +6,8 @@
         "target": "ES5",
         "allowJs": true,
         "moduleResolution": "Node",
-        "types": ["@webgpu/types"]
+        "types": ["@webgpu/types"],
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true
     }
 }

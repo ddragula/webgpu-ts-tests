@@ -6,9 +6,75 @@
   <title>WebGPU TS Tests</title>
 </head>
 <body>
-  <div id="container">
-    <canvas id="main-canvas"></canvas>
-    <div id="chart"></div>
+  <div id="wrapper">
+    <div class="container">
+      <div class="item"><div class="chart" id="temperature-chart"></div></div>
+      <div class="item">
+        <h2>Temperature contourmap settings</h2>
+        <form class="settings-form" id="temperature-form" data-chart="temperature">
+          <label>
+              <input type="checkbox" data-option="enabled">
+              Enabled
+          </label><br>
+          <label>
+              <input type="checkbox" data-option="smoothColoring">
+              Smooth Coloring
+          </label><br>
+          <label>
+              <input type="checkbox" data-option="showContourLines">
+              Show Contour Lines
+          </label><br><br>
+          <label>
+              Contour Interval: <span class="interval-label"></span><br>
+              <input type="range" data-option="contourInterval" min="0" max="100" step="0.1">
+          </label>
+        </form>
+      </div>
+      <div class="item"><div class="chart" id="perlin-data-map"></div></div>
+      <div class="item">
+        <h2>Perlin noise contourmap settings</h2>
+        <form class="settings-form" id="perlin-form" data-chart="perlin">
+          <label>
+              <input type="checkbox" data-option="enabled">
+              Enabled
+          </label><br>
+          <label>
+              <input type="checkbox" data-option="smoothColoring">
+              Smooth Coloring
+          </label><br>
+          <label>
+              <input type="checkbox" data-option="showContourLines">
+              Show Contour Lines
+          </label><br><br>
+          <label>
+              Contour Interval: <span class="interval-label"></span><br>
+              <input type="range" data-option="contourInterval" min="0" max="100" step="0.1">
+          </label>
+        </form>
+      </div>
+      <div class="item"><div class="chart" id="random-data-map-lq"></div></div>
+      <div class="item">
+        <h2>Random LQ contourmap settings</h2>
+        <form class="settings-form" id="lq-form" data-chart="lq">
+          <label>
+              <input type="checkbox" data-option="enabled">
+              Enabled
+          </label><br>
+          <label>
+              <input type="checkbox" data-option="smoothColoring">
+              Smooth Coloring
+          </label><br>
+          <label>
+              <input type="checkbox" data-option="showContourLines">
+              Show Contour Lines
+          </label><br><br>
+          <label>
+              Contour Interval: <span class="interval-label"></span><br>
+              <input type="range" data-option="contourInterval" min="0" max="100" step="0.1">
+          </label>
+        </form>
+      </div>
+    </div>
   </div>
 </body>
 </html>
