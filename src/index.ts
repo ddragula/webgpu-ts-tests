@@ -2,7 +2,7 @@ import './style.css';
 import * as Highcharts from 'highcharts';
 import DataModule from 'highcharts/modules/data';
 import HeatmapModule from 'highcharts/modules/heatmap';
-import ContourModule from './hc-modules/ContourModule';
+import ContourModule, { type HeatmapSeries } from './hc-modules/ContourModule';
 
 import perlinData from './data/perlin.json';
 import temperatureCsv from './data/temperature.csv';
@@ -43,7 +43,9 @@ Highcharts.setOptions({
     },
 });
 
-Highcharts.chart('temperature-chart', {
+const charts: Record<string, Highcharts.Chart> = {};
+
+charts.temperature = Highcharts.chart('temperature-chart', {
     title: {
         text: 'Temperature Chart',
     },
@@ -77,7 +79,7 @@ Highcharts.chart('temperature-chart', {
     }],
 });
 
-Highcharts.chart('perlin-data-map', {
+charts.perlin = Highcharts.chart('perlin-data-map', {
     title: {
         text: 'Perlin Noise (50x50)',
     },
@@ -100,7 +102,7 @@ Highcharts.chart('perlin-data-map', {
     }],
 });
 
-Highcharts.chart('random-data-map-lq', {
+charts.lq = Highcharts.chart('random-data-map-lq', {
     title: {
         text: 'Random Data (5x10)',
     },
@@ -126,3 +128,62 @@ Highcharts.chart('random-data-map-lq', {
         },
     }],
 });
+
+function renderContourmap(series: HeatmapSeries, optionKey: keyof Highcharts.PlotHeatmapOptions['contour']): void {
+    switch(optionKey) {
+    case 'enabled':
+        series.render();
+        break;
+    case 'contourInterval':
+        series.contourmap?.setContourIntervalUniform(true);
+        break;
+    case 'smoothColoring':
+        series.contourmap?.setSmoothColoringUniform(true);
+        break;
+    case 'showContourLines':
+        series.contourmap?.setShowContourLinesUniform(true);
+        break;
+    }
+}
+
+document.querySelectorAll('.settings-form').forEach((form) => {
+    const chart = charts[form.getAttribute('data-chart')];
+    const series = chart.series[0] as HeatmapSeries;
+    const options = (series.options as Highcharts.PlotHeatmapOptions).contour;
+    const contourmap = series.contourmap;
+    if (!contourmap || !options) {
+        return;
+    }
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+    });
+
+    form.querySelectorAll('input').forEach((input) => {
+        const optionKey = input.getAttribute('data-option') as keyof Highcharts.PlotHeatmapOptions['contour'];
+
+        if (optionKey === 'contourInterval') {
+            input.value = options[optionKey] + '';
+            const mod = series.valueMax - series.valueMin;
+            input.max = mod / 2 + '';
+
+            const span = form.querySelector('.interval-label');
+            span.textContent = input.value;
+
+            input.addEventListener('input', () => {
+                options[optionKey] = parseFloat(input.value);
+                const span = form.querySelector('.interval-label');
+                span.textContent = input.value;
+                renderContourmap(series, optionKey);
+            });
+        } else {
+            input.checked = !!options[optionKey];
+
+            input.addEventListener('input', () => {
+                options[optionKey] = input.checked;
+                renderContourmap(series, optionKey);
+            });
+        }
+    });
+});
+

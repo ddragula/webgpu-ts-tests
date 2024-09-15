@@ -305,42 +305,48 @@ export default class Contourmap {
     }
 
     /**
-     * Set the contour interval uniform according to the series options and re-render the Contourmap if it is visible.
+     * Set the contour interval uniform according to the series options.
      */
-    public setContourIntervalUniform() {
+    public setContourIntervalUniform(rerender = false) {
         this.device.queue.writeBuffer(
             this.contourIntervalUniformBuffer,
             0,
             new Float32Array([this.getContourInterval()]),
         );
 
-        this.render?.();
+        if (rerender) {
+            this.render?.();
+        }
     }
 
     /**
-     * Set the smooth coloring uniform according to the series options and re-render the Contourmap if it is visible.
+     * Set the smooth coloring uniform according to the series options.
      */
-    public setSmoothColoringUniform() {
+    public setSmoothColoringUniform(rerender = false) {
         this.device.queue.writeBuffer(
             this.smoothColoringUniformBuffer,
             0,
             new Float32Array([this.getSmoothColoring()]),
         );
 
-        this.render?.();
+        if (rerender) {
+            this.render?.();
+        }
     }
 
     /**
-     * Set the show contour lines uniform according to the series options and re-render the Contourmap if it is visible.
+     * Set the show contour lines uniform according to the series options.
      */
-    public setShowContourLinesUniform() {
+    public setShowContourLinesUniform(rerender = false) {
         this.device.queue.writeBuffer(
             this.showContourLinesUniformBuffer,
             0,
             new Float32Array([this.getShowContourLines()]),
         );
 
-        this.render?.();
+        if (rerender) {
+            this.render?.();
+        }
     }
 
     private getColorAxisStopsData() : { array: Float32Array, length: number } {

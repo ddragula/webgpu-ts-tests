@@ -43,7 +43,14 @@ export default function (H: typeof Highcharts): void {
 
         if (this.options.contour?.enabled) {
             if (!series.contourmap) {
+
+                series.points.forEach(point => {
+                    point.graphic?.hide();
+                });
+
                 series.contourmap = new Contourmap(series);
+                this.directTouch = false;
+                series.isDirtyCanvas = false;
             }
 
             await series.contourmap.run();
@@ -56,6 +63,8 @@ export default function (H: typeof Highcharts): void {
 
             proceed.apply(this);
         }
+
+        console.log(series.contourmap);
     });
 }
 

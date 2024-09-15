@@ -11,12 +11,24 @@ body {
     z-index: -1;
 }
 
-.highcharts-grid-line {
-    stroke: #0001
+form {
+    user-select: none;
 }
 
-.chart {
-    display: inline-block;
-    width: 700px;
-    height: 500px;;
+.item {
+    width: 50%;
+    float: left;
+    box-sizing: border-box;
+    max-width: 600px;
+}
+
+.item:nth-child(odd) {
+    clear: left;
+}
+
+@media (width <= 800px) {
+    .item {
+        width: 100%;
+        clear: none;
+    }
 }
