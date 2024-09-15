@@ -63,6 +63,9 @@ declare module 'highcharts/highcharts' {
     interface PlotHeatmapOptions {
         contour?: {
             enabled?: boolean;
+            smoothColoring?: boolean;
+            showContourLines?: boolean;
+            contourInterval?: number;
         }
     }
 }

@@ -35,6 +35,9 @@ Highcharts.setOptions({
             showInLegend: false,
             contour: {
                 enabled: true,
+                smoothColoring: true,
+                showContourLines: true,
+                contourInterval: 10,
             },
         },
     },
@@ -67,7 +70,9 @@ Highcharts.chart('temperature-chart', {
         type: 'heatmap',
         colsize: 24 * 36e5,
         contour: {
-            enabled: true,
+            contourInterval: 1,
+            smoothColoring: false,
+            showContourLines: false,
         },
     }],
 });
@@ -87,6 +92,11 @@ Highcharts.chart('perlin-data-map', {
     series: [{
         type: 'heatmap',
         data: perlinData,
+        contour: {
+            smoothColoring: true,
+            showContourLines: true,
+            contourInterval: 9.8,
+        },
     }],
 });
 
@@ -109,5 +119,10 @@ Highcharts.chart('random-data-map-lq', {
             [8, 0, 85], [8, 1, 97], [8, 2, 123], [8, 3, 64], [8, 4, 84],
             [9, 0, 47], [9, 1, 114], [9, 2, 31], [9, 3, 48], [9, 4, 91],
         ],
+        contour: {
+            enabled: true,
+            smoothColoring: true,
+            showContourLines: false,
+        },
     }],
 });

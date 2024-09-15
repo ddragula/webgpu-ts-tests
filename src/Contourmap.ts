@@ -1,6 +1,7 @@
 import type { HeatmapSeries } from './hc-modules/ContourModule';
-import Delaunator from 'delaunator';
+import type { PlotHeatmapOptions } from 'highcharts/highcharts';
 
+import Delaunator from 'delaunator';
 import basicShader from './shaders/shader.wgsl';
 import colorToArray from './utils/colorToArray';
 
@@ -14,6 +15,9 @@ export default class Contourmap {
     private extremesUniformBuffer: GPUBuffer;
     private valueExtremesUniform: Float32Array;
     private valueExtremesUniformBuffer: GPUBuffer;
+    private contourIntervalUniformBuffer: GPUBuffer;
+    private smoothColoringUniformBuffer: GPUBuffer;
+    private showContourLinesUniformBuffer: GPUBuffer;
 
     private context: GPUCanvasContext;
     private device?: GPUDevice;
@@ -133,10 +137,28 @@ export default class Contourmap {
             mappedAtCreation: true,
         });
 
+        this.contourIntervalUniformBuffer = device.createBuffer({
+            size: 4,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        this.smoothColoringUniformBuffer = device.createBuffer({
+            size: 4,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        this.showContourLinesUniformBuffer = device.createBuffer({
+            size: 4,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
         device.queue.writeBuffer(vertexBuffer, 0, vertices);
         device.queue.writeBuffer(indexBuffer, 0, indices);
         device.queue.writeBuffer(extremesUniformBuffer, 0, extremesUniform);
         device.queue.writeBuffer(valueExtremesUniformBuffer, 0, valueExtremesUniform);
+        this.setContourIntervalUniform();
+        this.setSmoothColoringUniform();
+        this.setShowContourLinesUniform();
 
         new Float32Array(colorAxisStopsBuffer.getMappedRange()).set(colorAxisStops.array);
         colorAxisStopsBuffer.unmap();
@@ -198,6 +220,21 @@ export default class Contourmap {
                 resource: {
                     buffer: colorAxisStopsCountBuffer,
                 },
+            }, {
+                binding: 4,
+                resource: {
+                    buffer: this.contourIntervalUniformBuffer,
+                },
+            }, {
+                binding: 5,
+                resource: {
+                    buffer: this.smoothColoringUniformBuffer,
+                },
+            }, {
+                binding: 6,
+                resource: {
+                    buffer: this.showContourLinesUniformBuffer,
+                },
             }],
         });
 
@@ -244,6 +281,66 @@ export default class Contourmap {
             yAxis.toValue(yAxis.len, true), // yMin
             yAxis.toValue(0, true), // yMax
         ];
+    }
+
+    private getContourInterval() {
+        const options = this.series.options as PlotHeatmapOptions;
+        const interval = options.contour?.contourInterval;
+
+        if (isNaN(interval) || interval <= 0) {
+            return -1;
+        }
+
+        return interval;
+    }
+
+    private getSmoothColoring() {
+        const options = this.series.options as PlotHeatmapOptions;
+        return options.contour?.smoothColoring ? 1 : 0;
+    }
+
+    private getShowContourLines() {
+        const options = this.series.options as PlotHeatmapOptions;
+        return options.contour?.showContourLines ? 1 : 0;
+    }
+
+    /**
+     * Set the contour interval uniform according to the series options and re-render the Contourmap if it is visible.
+     */
+    public setContourIntervalUniform() {
+        this.device.queue.writeBuffer(
+            this.contourIntervalUniformBuffer,
+            0,
+            new Float32Array([this.getContourInterval()]),
+        );
+
+        this.render?.();
+    }
+
+    /**
+     * Set the smooth coloring uniform according to the series options and re-render the Contourmap if it is visible.
+     */
+    public setSmoothColoringUniform() {
+        this.device.queue.writeBuffer(
+            this.smoothColoringUniformBuffer,
+            0,
+            new Float32Array([this.getSmoothColoring()]),
+        );
+
+        this.render?.();
+    }
+
+    /**
+     * Set the show contour lines uniform according to the series options and re-render the Contourmap if it is visible.
+     */
+    public setShowContourLinesUniform() {
+        this.device.queue.writeBuffer(
+            this.showContourLinesUniformBuffer,
+            0,
+            new Float32Array([this.getShowContourLines()]),
+        );
+
+        this.render?.();
     }
 
     private getColorAxisStopsData() : { array: Float32Array, length: number } {
