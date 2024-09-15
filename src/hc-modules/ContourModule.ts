@@ -63,8 +63,6 @@ export default function (H: typeof Highcharts): void {
 
             proceed.apply(this);
         }
-
-        console.log(series.contourmap);
     });
 }
 
