@@ -1,13 +1,22 @@
 import vertexShader from './shaders/vertex.wgsl';
 import fragmentShader from './shaders/fragment.wgsl';
+import pickingVertexShader from './shaders/picking_vertex.wgsl';
+import pickingFragmentShader from './shaders/picking_fragment.wgsl';
+import { mix, type vec3 } from './utils';
 
 /**
  * Main class of the application.
  */
 export default class App {
     private canvas: HTMLCanvasElement;
+    private log: HTMLTextAreaElement;
     private zoom = new Float32Array([1]);
+    private device?: GPUDevice;
     private frame?: () => void;
+    private pixelBuffer?: GPUBuffer;
+    private pickingTexture?: GPUTexture;
+    private instanceData = this.generateInstances(100000);
+    //private instanceData = new Float32Array([-0.5, -0.5, 0, 0.5, 0.5, 1]);
 
     /**
      * Crates an instance of the application.
@@ -18,13 +27,71 @@ export default class App {
         canvas.height = canvas.clientHeight * window.devicePixelRatio;
         this.canvas = canvas;
 
+        this.log = document.getElementById('log') as HTMLTextAreaElement;
+
         canvas.addEventListener('wheel', (event) => {
             event.preventDefault();
 
-            const zoomSpeed = 0.0001;
+            const zoomSpeed = 0.001;
             this.zoom[0] /= 1 + zoomSpeed * event.deltaY;
 
             this.frame?.();
+        });
+
+        let isMappingPending = false;
+        let pickedInstanceId = 0;
+        canvas.addEventListener('mousemove', async (event) => {
+            if (isMappingPending || !this.device || !this.pickingTexture) {
+                return;
+            }
+            isMappingPending = true;
+
+            const rect = canvas.getBoundingClientRect();
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+
+            // Przelicz współrzędne kursora na współrzędne w canvasie
+            const x = (event.clientX - rect.left) * canvasWidth / rect.width;
+            const y = (event.clientY - rect.top) * canvasHeight / rect.height;
+
+            if (!this.pixelBuffer) {
+                this.pixelBuffer = this.device.createBuffer({
+                    size: 4,
+                    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+                });
+            }
+
+            const { device, pixelBuffer } = this;
+
+            const commandEncoder = device.createCommandEncoder();
+            commandEncoder.copyTextureToBuffer({
+                texture: this.pickingTexture,
+                origin: { x: Math.floor(x), y: Math.floor(y) },
+                aspect: 'all',
+            }, {
+                buffer: pixelBuffer,
+                offset: 0,
+                bytesPerRow: 256,
+            }, [1, 1, 1]);
+
+            device.queue.submit([commandEncoder.finish()]);
+
+            try {
+                await pixelBuffer.mapAsync(GPUMapMode.READ);
+                const pixelData = new Uint8Array(pixelBuffer.getMappedRange());
+
+                const id = pixelData[0] << 16 | pixelData[1] << 8 | pixelData[2];
+
+                pixelBuffer.unmap();
+                isMappingPending = false;
+
+                if (id !== pickedInstanceId) {
+                    this.showTooltip(id ? id - 1 : null);
+                    pickedInstanceId = id;
+                }
+            } catch (e) {
+                isMappingPending = false;
+            }
         });
     }
 
@@ -46,12 +113,35 @@ export default class App {
     }
 
     /**
+     * Shows tooltip with instance data for the picked instance.
+     * @param instanceId - ID of the picked instance
+     */
+    showTooltip(instanceId: number | null) {
+        if (instanceId !== null) {
+            const data = [];
+            for (let i = 0; i < 3; i++) {
+                data.push(this.instanceData[instanceId * 3 + i]);
+            }
+
+            const blue: vec3 = [0.17255, 0.68627, 0.99608] as const;
+            const red: vec3 = [1.0, 0.0, 0.0] as const;
+
+            this.log.innerText = JSON.stringify({
+                id: instanceId,
+                data,
+            }, null, 4);
+
+            this.log.style.borderColor = `rgb(${mix(blue, red, data[2]).map((c) => Math.round(c * 255)).join(', ')})`;
+        }
+    }
+
+    /**
      * Asynchronous function that runs the application.
      */
     async run() {
         const { canvas } = this;
         const adapter = await navigator.gpu.requestAdapter();
-        const device = await adapter.requestDevice();
+        const device = this.device = await adapter.requestDevice();
         const context = canvas.getContext('webgpu') as GPUCanvasContext;
         const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
         context.configure({
@@ -67,7 +157,7 @@ export default class App {
             1,  1,
         ]);
 
-        const instanceData = this.generateInstances(1000000);
+        const { instanceData } = this;
 
         const zoomUniformBuffer = device.createBuffer({
             size: this.zoom.byteLength,
@@ -112,11 +202,37 @@ export default class App {
             stepMode: 'instance',
         };
 
+        const bindGroupLayout = device.createBindGroupLayout({
+            entries: [{
+                binding: 0,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: {
+                    type: 'uniform',
+                },
+            }] as GPUBindGroupLayoutEntry[],
+        });
+
+        const bindGroup = device.createBindGroup({
+            layout: bindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: {
+                        buffer: zoomUniformBuffer,
+                    },
+                },
+            ],
+        });
+
+        const pipelineLayout = device.createPipelineLayout({
+            bindGroupLayouts: [bindGroupLayout],
+        });
+
         const vertexShaderModule = device.createShaderModule({ code: vertexShader });
         const fragmentShaderModule = device.createShaderModule({ code: fragmentShader });
 
         const pipeline = device.createRenderPipeline({
-            layout: 'auto',
+            layout: pipelineLayout,
             vertex: {
                 module: vertexShaderModule,
                 entryPoint: 'main',
@@ -148,42 +264,79 @@ export default class App {
             },
         });
 
-        const bindGroup = device.createBindGroup({
-            layout: pipeline.getBindGroupLayout(0),
-            entries: [
-                {
-                    binding: 0,
-                    resource: {
-                        buffer: zoomUniformBuffer,
-                    },
-                },
-            ],
+        this.pickingTexture = device.createTexture({
+            size: [canvas.width, canvas.height],
+            format: 'rgba8unorm',
+            usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+        });
+
+        const pickingPipeline = device.createRenderPipeline({
+            layout: pipelineLayout,
+            vertex: {
+                module: device.createShaderModule({ code: pickingVertexShader }),
+                entryPoint: 'main',
+                buffers: [vertexBufferLayout, instanceBufferLayout],
+            },
+            fragment: {
+                module: device.createShaderModule({ code: pickingFragmentShader }),
+                entryPoint: 'main',
+                targets: [{
+                    format: 'rgba8unorm' as GPUTextureFormat,
+                }],
+            },
+            primitive: {
+                topology: 'triangle-strip',
+                stripIndexFormat: undefined,
+            },
         });
 
         this.frame = function () {
             const commandEncoder = device.createCommandEncoder();
 
-            const textureView = context.getCurrentTexture().createView();
-            const renderPassDescriptor: GPURenderPassDescriptor = {
-                colorAttachments: [
-                    {
-                        view: textureView,
-                        loadOp: 'clear' as GPULoadOp,
-                        storeOp: 'store' as GPUStoreOp,
-                        clearValue: { r: 1, g: 1, b: 1, a: 1 },
-                    },
-                ],
-            };
+            {
+                const pickingPassDesc: GPURenderPassDescriptor = {
+                    colorAttachments: [
+                        {
+                            view: this.pickingTexture.createView(),
+                            loadOp: 'clear' as GPULoadOp,
+                            storeOp: 'store' as GPUStoreOp,
+                            clearValue: { r: 0, g: 0, b: 0, a: 1 },
+                        },
+                    ],
+                };
 
-            device.queue.writeBuffer(zoomUniformBuffer, 0, this.zoom);
+                const pickingPass = commandEncoder.beginRenderPass(pickingPassDesc);
+                pickingPass.setPipeline(pickingPipeline);
+                pickingPass.setVertexBuffer(0, quadVertexBuffer);
+                pickingPass.setVertexBuffer(1, instanceBuffer);
+                pickingPass.setBindGroup(0, bindGroup);
+                pickingPass.draw(4, instanceData.length / 3, 0, 0);
+                pickingPass.end();
+            }
 
-            const renderPass = commandEncoder.beginRenderPass(renderPassDescriptor);
-            renderPass.setPipeline(pipeline);
-            renderPass.setVertexBuffer(0, quadVertexBuffer);
-            renderPass.setVertexBuffer(1, instanceBuffer);
-            renderPass.setBindGroup(0, bindGroup);
-            renderPass.draw(4, instanceData.length / 3, 0, 0);
-            renderPass.end();
+            {
+                const textureView = context.getCurrentTexture().createView();
+                const renderPassDescriptor: GPURenderPassDescriptor = {
+                    colorAttachments: [
+                        {
+                            view: textureView,
+                            loadOp: 'clear' as GPULoadOp,
+                            storeOp: 'store' as GPUStoreOp,
+                            clearValue: { r: 1, g: 1, b: 1, a: 1 },
+                        },
+                    ],
+                };
+
+                device.queue.writeBuffer(zoomUniformBuffer, 0, this.zoom);
+
+                const renderPass = commandEncoder.beginRenderPass(renderPassDescriptor);
+                renderPass.setPipeline(pipeline);
+                renderPass.setVertexBuffer(0, quadVertexBuffer);
+                renderPass.setVertexBuffer(1, instanceBuffer);
+                renderPass.setBindGroup(0, bindGroup);
+                renderPass.draw(4, instanceData.length / 3, 0, 0);
+                renderPass.end();
+            }
 
             device.queue.submit([commandEncoder.finish()]);
         };
