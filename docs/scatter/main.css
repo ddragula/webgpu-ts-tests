@@ -1,0 +1,18 @@
+body {
+    margin: 0;
+    background-color: #333;
+}
+
+#main-canvas {
+    width: 600px;
+    height: 600px;
+}
+
+#log {
+    padding: 10px 15px;
+    background-color: #212123;
+    width: fit-content;
+    margin: 0;
+    color: #ddd;
+    border-right: 5px solid #f0f;
+}
