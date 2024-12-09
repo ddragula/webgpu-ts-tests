@@ -5,9 +5,14 @@ This is a sandbox repository for experimenting with WebGPU, with a focus on expl
 The most valuable demos:
 - [Mandelbrot set](https://ddragula.github.io/webgpu-ts-tests/mandelbrot/)
 - [Heatmap with interpolation & contours](https://ddragula.github.io/webgpu-ts-tests/contour-charts/)
+- [Scatter map with point hover and simple zoom](https://ddragula.github.io/webgpu-ts-tests/scatter/)
 
 ## Highcharts & WebGPU Mandelbrot set ([link](https://ddragula.github.io/webgpu-ts-tests/mandelbrot/))
 ![image](https://github.com/user-attachments/assets/d7a1e835-d5b4-40ef-b52e-863c2cb9dee9)
 
 ## Highcharts & Contourmap Series ([link](https://ddragula.github.io/webgpu-ts-tests/contour-charts/))
 ![image](https://github.com/user-attachments/assets/36848647-bac1-45fc-a1f5-3f1d5b888c2a)
+
+## Pure WebGPU Scatter map with point hover ([link](https://ddragula.github.io/webgpu-ts-tests/scatter/))
+![image](https://github.com/user-attachments/assets/ecee9374-6d7e-432b-8bd7-0e0d78d91da9)
+
